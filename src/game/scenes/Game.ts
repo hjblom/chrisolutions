@@ -31,6 +31,8 @@ const SPLIT_SPEED_MULT = 1.05;
 const SUPER_SPEED_MULT = 1.8;
 const EGG_DROP_SPEED = 12;
 const EGG_DENSITY = 0.015;
+const BORIS_RADIUS = 180;
+const BORIS_IMPULSE = 0.07;
 
 export class Game extends Scene
 {
@@ -448,8 +450,29 @@ export class Game extends Scene
         const body = b.body as MatterJS.BodyType;
         b.setVelocity(body.velocity.x, body.velocity.y - 4);
 
+        // Explosion puff at the drop point
+        const dropY = y + 10;
+        const flash = this.add.circle(x, dropY, 18, 0xffeecc, 0.85).setDepth(200);
+        this.tweens.add({
+            targets: flash,
+            scale: 5,
+            alpha: 0,
+            duration: 320,
+            ease: 'Cubic.Out',
+            onComplete: () => flash.destroy(),
+        });
+        this.add.particles(x, dropY, 'sparkle', {
+            speed: { min: 80, max: 220 },
+            scale: { start: 2, end: 0 },
+            tint: [0xffcc66, 0xffeebb, 0xffffff],
+            lifespan: 420,
+            quantity: 22,
+            emitting: false,
+        }).explode(22);
+        this.cameras.main.shake(120, 0.008);
+
         // Drop Boris as a heavy projectile straight down
-        const egg = this.matter.add.image(x, y + 10, 'boris', undefined, {
+        const egg = this.matter.add.image(x, dropY, 'boris', undefined, {
             shape: { type: 'circle', radius: 30 },
             restitution: 0.1,
             friction: 0.5,
@@ -459,12 +482,69 @@ export class Game extends Scene
         egg.setVelocity(0, EGG_DROP_SPEED);
         (egg.body as any).inertia = Infinity;
         (egg.body as any).inverseInertia = 0;
+        egg.setData('isBoris', true);
+        egg.setData('detonated', false);
         this.activeBirds.push(egg);
 
         // Destroy egg after a delay
         this.time.delayedCall(3000, () => {
             if (egg.active) egg.destroy();
         });
+    }
+
+    detonateBoris (egg: Phaser.Physics.Matter.Image)
+    {
+        if (!egg.active || egg.getData('detonated')) return;
+        egg.setData('detonated', true);
+
+        const x = egg.x;
+        const y = egg.y;
+
+        // Flash ring
+        const flash = this.add.circle(x, y, 24, 0xffeecc, 0.95).setDepth(200);
+        this.tweens.add({
+            targets: flash,
+            scale: BORIS_RADIUS / 24,
+            alpha: 0,
+            duration: 420,
+            ease: 'Cubic.Out',
+            onComplete: () => flash.destroy(),
+        });
+
+        // Particles
+        this.add.particles(x, y, 'sparkle', {
+            speed: { min: 140, max: 360 },
+            scale: { start: 2.8, end: 0 },
+            tint: [0xff7733, 0xffcc44, 0xffffff],
+            lifespan: 540,
+            quantity: 36,
+            emitting: false,
+        }).explode(36);
+
+        this.cameras.main.shake(240, 0.014);
+
+        // Radial impulse + kill anything in radius (skip the egg itself)
+        const bodies = (this.matter.world as any).localWorld.bodies as MatterJS.BodyType[];
+        for (const body of bodies)
+        {
+            if (body.isStatic) continue;
+            const obj = (body as any).gameObject;
+            if (!obj || obj === egg) continue;
+            const ddx = body.position.x - x;
+            const ddy = body.position.y - y;
+            const dist = Math.hypot(ddx, ddy);
+            if (dist > BORIS_RADIUS) continue;
+            const falloff = 1 - dist / BORIS_RADIUS;
+            const nx = ddx / (dist || 1);
+            const ny = ddy / (dist || 1);
+            const mag = BORIS_IMPULSE * falloff;
+            this.matter.body.applyForce(body, body.position, { x: nx * mag, y: ny * mag - 0.025 * falloff });
+            this.forceKill(obj);
+        }
+
+        // Destroy the egg
+        this.activeBirds = this.activeBirds.filter(o => o !== egg);
+        egg.destroy();
     }
 
     // Bomb-equivalent: ignore vulnerability + speed thresholds for in-radius hits
@@ -615,11 +695,23 @@ export class Game extends Scene
             const relSpeed = Math.hypot(vA.x - vB.x, vA.y - vB.y);
             const a = (pair.bodyA as any).gameObject;
             const b = (pair.bodyB as any).gameObject;
+            this.maybeDetonateBoris(a, b);
+            this.maybeDetonateBoris(b, a);
             this.maybeKillPig(a, relSpeed);
             this.maybeKillPig(b, relSpeed);
             this.maybeBreakBox(a, relSpeed);
             this.maybeBreakBox(b, relSpeed);
         }
+    }
+
+    maybeDetonateBoris (obj: any, other: any)
+    {
+        if (!obj || typeof obj.getData !== 'function') return;
+        if (!obj.getData('isBoris')) return;
+        if (obj.getData('detonated')) return;
+        // Skip collisions with the launching bird so it can fly free
+        if (other && this.activeBirds.includes(other) && other !== obj) return;
+        this.detonateBoris(obj as Phaser.Physics.Matter.Image);
     }
 
     maybeKillPig (obj: any, relSpeed: number)
