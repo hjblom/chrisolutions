@@ -340,7 +340,7 @@ export class Game extends Scene
         this.powerUsed = false;
         this.currentPower = this.birdQueue[0] ?? 'normal';
 
-        const texture = this.currentPower === 'super' ? 'chris-super' : 'chris-mario';
+        const texture = 'chris-mario';
         this.bird = this.matter.add.image(ANCHOR_X, ANCHOR_Y, texture, undefined, {
             shape: { type: 'circle', radius: 32 },
             restitution: 0.5,
@@ -438,7 +438,7 @@ export class Game extends Scene
     {
         const b = this.bird!;
         const body = b.body as MatterJS.BodyType;
-        b.setTexture('chris-super');
+        b.setTexture('chris-mario');
         b.setTint(0xffee66);
         b.setScale(0.45);
         b.setVelocity(body.velocity.x * SUPER_SPEED_MULT, body.velocity.y * SUPER_SPEED_MULT);
@@ -769,16 +769,13 @@ export class Game extends Scene
             this.tweens.add({ targets: icon, scale: chocScale, duration: 300, ease: 'Back.Out' });
         }
 
-        // Bird queue: bottom-left icons
-        // chris (734x517) → 30/517 ≈ 0.058, chris-super (128x128) → 30/128 ≈ 0.23
+        // Bird queue: bottom-left icons (chris-mario is 1024x1024)
         for (const ic of this.queueIcons) ic.destroy();
         this.queueIcons = [];
         const upcoming = this.birdQueue.slice(1);
         upcoming.forEach((power, i) => {
-            const tex = power === 'super' ? 'chris-super' : 'chris-mario';
-            const s = power === 'super' ? 0.23 : 0.058;
-            const ic = this.add.image(24 + i * 48, 755, tex)
-                .setScale(s).setOrigin(0.5, 1).setDepth(100)
+            const ic = this.add.image(24 + i * 48, 755, 'chris-mario')
+                .setScale(0.03).setOrigin(0.5, 1).setDepth(100)
                 .setTint(POWER_TINT[power]);
             this.queueIcons.push(ic);
         });
