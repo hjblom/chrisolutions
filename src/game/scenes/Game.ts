@@ -52,6 +52,7 @@ export class Game extends Scene
     currentPower: Power = 'normal';
     powerUsed = false;
     activeBirds: Phaser.Physics.Matter.Image[] = [];
+    chrisKey = 'chris-mario';
 
     constructor ()
     {
@@ -62,6 +63,7 @@ export class Game extends Scene
     {
         this.level = data?.level ?? 1;
         this.score = data?.score ?? 0;
+        this.chrisKey = data?.chris ?? 'chris-mario';
     }
 
     create ()
@@ -120,7 +122,7 @@ export class Game extends Scene
 
         this.matter.world.on('collisionstart', this.onCollision, this);
 
-        this.input.keyboard!.on('keydown-R', () => this.scene.start('Game', { level: this.level, score: 0 }));
+        this.input.keyboard!.on('keydown-R', () => this.scene.start('Game', { level: this.level, score: 0, chris: this.chrisKey }));
     }
 
     getRosterForLevel (): Power[]
@@ -190,7 +192,7 @@ export class Game extends Scene
         this.powerUsed = false;
         this.currentPower = this.birdQueue[0] ?? 'normal';
 
-        const texture = 'chris-mario';
+        const texture = this.chrisKey;
         this.bird = this.matter.add.image(ANCHOR_X, ANCHOR_Y, texture, undefined, {
             shape: { type: 'circle', radius: 32 },
             restitution: 0.5,
@@ -288,7 +290,7 @@ export class Game extends Scene
     {
         const b = this.bird!;
         const body = b.body as MatterJS.BodyType;
-        b.setTexture('chris-mario');
+        b.setTexture(this.chrisKey);
         b.setTint(0xffee66);
         b.setScale(0.45);
         b.setVelocity(body.velocity.x * SUPER_SPEED_MULT, body.velocity.y * SUPER_SPEED_MULT);
@@ -339,7 +341,7 @@ export class Game extends Scene
         for (const off of offsets)
         {
             const a = angle + off;
-            const sub = this.matter.add.image(x, y, 'chris-mario', undefined, {
+            const sub = this.matter.add.image(x, y, this.chrisKey, undefined, {
                 shape: { type: 'circle', radius: 22 },
                 restitution: 0.5, friction: 0.3, density: 0.006,
             });
@@ -515,7 +517,7 @@ export class Game extends Scene
         this.input.once('pointerdown', () => {
             if (!win)
             {
-                this.scene.start('Game', { level: this.level, score: this.score });
+                this.scene.start('Game', { level: this.level, score: this.score, chris: this.chrisKey });
             }
             else if (isLastLevel)
             {
@@ -523,7 +525,7 @@ export class Game extends Scene
             }
             else
             {
-                this.scene.start('Game', { level: this.level + 1, score: this.score });
+                this.scene.start('Game', { level: this.level + 1, score: this.score, chris: this.chrisKey });
             }
         });
     }
@@ -619,12 +621,12 @@ export class Game extends Scene
             this.tweens.add({ targets: icon, scale: chocScale, duration: 300, ease: 'Back.Out' });
         }
 
-        // Bird queue: bottom-left icons (chris-mario is 1024x1024)
+        // Bird queue: bottom-left icons (chris textures are 1024x1024)
         for (const ic of this.queueIcons) ic.destroy();
         this.queueIcons = [];
         const upcoming = this.birdQueue.slice(1);
         upcoming.forEach((power, i) => {
-            const ic = this.add.image(24 + i * 48, 755, 'chris-mario')
+            const ic = this.add.image(24 + i * 48, 755, this.chrisKey)
                 .setScale(0.03).setOrigin(0.5, 1).setDepth(100)
                 .setTint(POWER_TINT[power]);
             this.queueIcons.push(ic);

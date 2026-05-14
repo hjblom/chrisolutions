@@ -1,12 +1,18 @@
 import { Scene, GameObjects } from 'phaser';
 
+const CHRIS_OPTIONS = ['chris-mario', 'chris-keg'];
+const CHRIS_SCALE = 0.45;
+
 export class MainMenu extends Scene
 {
-    background: GameObjects.Image;
-    chris: GameObjects.Image;
-    title: GameObjects.Text;
-    subtitle: GameObjects.Text;
-    prompt: GameObjects.Text;
+    background!: GameObjects.Image;
+    chris!: GameObjects.Image;
+    title!: GameObjects.Text;
+    subtitle!: GameObjects.Text;
+    prompt!: GameObjects.Text;
+    leftArrow!: GameObjects.Text;
+    rightArrow!: GameObjects.Text;
+    selectedIndex = 0;
 
     constructor ()
     {
@@ -28,7 +34,9 @@ export class MainMenu extends Scene
             blendMode: 'ADD'
         });
 
-        this.chris = this.add.image(512, 430, 'chris-mario').setScale(0.45);
+        this.chris = this.add.image(512, 430, CHRIS_OPTIONS[this.selectedIndex])
+            .setScale(CHRIS_SCALE)
+            .setInteractive({ useHandCursor: true });
         this.tweens.add({
             targets: this.chris,
             y: this.chris.y - 10,
@@ -74,21 +82,64 @@ export class MainMenu extends Scene
             stroke: '#000000', strokeThickness: 6
         }).setOrigin(0.5);
 
-        this.prompt = this.add.text(512, 680, 'click anywhere to start', {
-            fontFamily: 'Arial', fontSize: 26, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 4
-        }).setOrigin(0.5);
+        const arrowStyle = {
+            fontFamily: 'Arial Black', fontSize: 64, color: '#ffffff',
+            stroke: '#000000', strokeThickness: 6
+        };
+        this.leftArrow = this.add.text(280, 430, '◀', arrowStyle)
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true });
+        this.rightArrow = this.add.text(744, 430, '▶', arrowStyle)
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true });
         this.tweens.add({
-            targets: this.prompt,
-            alpha: 0.3,
+            targets: [this.leftArrow, this.rightArrow],
+            scale: 1.15,
             ease: 'Sine.InOut',
             duration: 700,
             yoyo: true,
             repeat: -1
         });
 
-        this.input.once('pointerdown', () => {
-            this.scene.start('Game');
+        this.prompt = this.add.text(512, 680, '← / → to switch  •  click Chris or press SPACE to start', {
+            fontFamily: 'Arial', fontSize: 22, color: '#ffffff',
+            stroke: '#000000', strokeThickness: 4
+        }).setOrigin(0.5);
+        this.tweens.add({
+            targets: this.prompt,
+            alpha: 0.4,
+            ease: 'Sine.InOut',
+            duration: 700,
+            yoyo: true,
+            repeat: -1
         });
+
+        this.leftArrow.on('pointerdown', () => this.cycle(-1));
+        this.rightArrow.on('pointerdown', () => this.cycle(1));
+        this.chris.on('pointerdown', () => this.startGame());
+
+        this.input.keyboard!.on('keydown-LEFT', () => this.cycle(-1));
+        this.input.keyboard!.on('keydown-RIGHT', () => this.cycle(1));
+        this.input.keyboard!.on('keydown-SPACE', () => this.startGame());
+        this.input.keyboard!.on('keydown-ENTER', () => this.startGame());
+    }
+
+    cycle (dir: number)
+    {
+        const len = CHRIS_OPTIONS.length;
+        this.selectedIndex = (this.selectedIndex + dir + len) % len;
+        const key = CHRIS_OPTIONS[this.selectedIndex];
+        this.tweens.add({
+            targets: this.chris,
+            alpha: 0,
+            duration: 110,
+            yoyo: true,
+            onYoyo: () => this.chris.setTexture(key)
+        });
+    }
+
+    startGame ()
+    {
+        this.scene.start('Game', { chris: CHRIS_OPTIONS[this.selectedIndex] });
     }
 }
