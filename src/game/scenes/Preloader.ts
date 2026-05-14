@@ -30,6 +30,7 @@ export class Preloader extends Scene
         this.load.image('chocolatine', 'assets/chocolatine.png');
         this.load.image('baguette', 'assets/baguette-new.png');
         this.load.image('baguette-broken', 'assets/baguette-broken.png');
+        this.load.image('bg-boris', 'assets/boris.png');
     }
 
     create ()
