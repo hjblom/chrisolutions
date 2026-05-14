@@ -775,16 +775,10 @@ export class Game extends Scene
         this.queueIcons = [];
         const upcoming = this.birdQueue.slice(1);
         upcoming.forEach((power, i) => {
-<<<<<<< Updated upstream
-            const tex = power === 'super' ? 'chris-super' : 'chris';
+            const tex = power === 'super' ? 'chris-super' : 'chris-mario';
             const s = power === 'super' ? 0.23 : 0.058;
             const ic = this.add.image(24 + i * 48, 755, tex)
                 .setScale(s).setOrigin(0.5, 1).setDepth(100)
-=======
-            const tex = power === 'super' ? 'chris-super' : 'chris-mario';
-            const ic = this.add.image(28 + i * 38, 32, tex)
-                .setScale(0.06).setOrigin(0.5).setDepth(100)
->>>>>>> Stashed changes
                 .setTint(POWER_TINT[power]);
             this.queueIcons.push(ic);
         });
