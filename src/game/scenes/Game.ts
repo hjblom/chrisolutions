@@ -10,7 +10,7 @@ const TOTAL_LEVELS = LEVELS.length;
 const KILL_SPEED = 3.0;
 const BOX_BREAK_SPEED = 5.0;
 const SPAWN_IMMUNITY_MS = 1200;
-const PIG_SCALE = 0.25;
+const PIG_SCALE = 0.08;
 const REST_SPEED = 0.4;
 const REST_FRAMES_NEEDED = 24;
 const MAX_WAIT_MS = 8000;
@@ -184,7 +184,7 @@ export class Game extends Scene
 
     spawnPig (x: number, y: number)
     {
-        const pig = this.matter.add.image(x, y, 'chris-french', undefined, {
+        const pig = this.matter.add.image(x, y, 'wine-bottle', undefined, {
             shape: { type: 'circle', radius: PIG_RADIUS },
             restitution: 0.25,
             friction: 0.5,
@@ -796,8 +796,8 @@ export class Game extends Scene
         this.pigIcons = [];
         for (let i = 0; i < this.pigsAlive; i++)
         {
-            const ic = this.add.image(1000 - i * 40, 755, 'chris-french')
-                .setScale(0.23).setOrigin(0.5, 1).setDepth(100);
+            const ic = this.add.image(1000 - i * 40, 755, 'wine-bottle')
+                .setScale(0.03).setOrigin(0.5, 1).setDepth(100);
             this.pigIcons.push(ic);
         }
 

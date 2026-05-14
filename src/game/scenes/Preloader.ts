@@ -30,7 +30,10 @@ export class Preloader extends Scene
         this.load.image('chocolatine', 'assets/chocolatine.png');
         this.load.image('baguette', 'assets/baguette-new.png');
         this.load.image('baguette-broken', 'assets/baguette-broken.png');
+        this.load.image('wine-bottle', 'assets/wine-bottle.png');
         this.load.image('bg-boris', 'assets/boris.png');
+        this.load.image('bg-glasgow', 'assets/glasgow.png');
+        this.load.image('bg-boris2', 'assets/boris2.png');
         this.load.image('boris', 'boris.png');
 
         this.load.audio('bgm1', 'music/BACKGROUND_MUSIC_1.mp3');
