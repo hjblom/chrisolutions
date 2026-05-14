@@ -5,7 +5,7 @@ const ANCHOR_Y = 560;
 const MAX_PULL = 190;
 const LAUNCH_POWER = 0.32;
 const GROUND_Y = 720;
-const STARTING_BIRDS = 5;
+const TOTAL_LEVELS = 5;
 const KILL_SPEED = 3.0;
 const BOX_BREAK_SPEED = 5.0;
 const SPAWN_IMMUNITY_MS = 1200;
@@ -22,6 +22,7 @@ export class Game extends Scene
     scoreText!: GameObjects.Text;
     birdsText!: GameObjects.Text;
     pigsText!: GameObjects.Text;
+    levelText!: GameObjects.Text;
     helpText!: GameObjects.Text;
 
     isDragging = false;
@@ -31,8 +32,9 @@ export class Game extends Scene
     restFrames = 0;
     launchedAt = 0;
     score = 0;
-    birdsLeft = STARTING_BIRDS;
+    birdsLeft = 5;
     pigsAlive = 0;
+    level = 1;
     pigs: Phaser.Physics.Matter.Image[] = [];
 
     constructor ()
@@ -40,10 +42,15 @@ export class Game extends Scene
         super('Game');
     }
 
+    init (data: any)
+    {
+        this.level = data?.level ?? 1;
+        this.score = data?.score ?? 0;
+    }
+
     create ()
     {
-        this.score = 0;
-        this.birdsLeft = STARTING_BIRDS;
+        this.birdsLeft = this.getBirdsForLevel();
         this.pigsAlive = 0;
         this.pigs = [];
         this.isDragging = false;
@@ -85,6 +92,10 @@ export class Game extends Scene
             fontFamily: 'Arial', fontSize: 22, color: '#ffffff',
             stroke: '#000000', strokeThickness: 3
         });
+        this.levelText = this.add.text(1004, 14, '', {
+            fontFamily: 'Arial Black', fontSize: 28, color: '#ffdd44',
+            stroke: '#000000', strokeThickness: 4
+        }).setOrigin(1, 0);
         this.helpText = this.add.text(512, 30, 'Drag Chris back and release. R to restart.', {
             fontFamily: 'Arial', fontSize: 20, color: '#ffffff',
             stroke: '#000000', strokeThickness: 3
@@ -100,46 +111,178 @@ export class Game extends Scene
 
         this.matter.world.on('collisionstart', this.onCollision, this);
 
-        this.input.keyboard!.on('keydown-R', () => this.scene.restart());
+        this.input.keyboard!.on('keydown-R', () => this.scene.start('Game', { level: this.level, score: 0 }));
+    }
+
+    getBirdsForLevel (): number
+    {
+        return [3, 4, 5, 5, 6][this.level - 1] ?? 5;
     }
 
     buildStructure ()
     {
-        const boxSize = 50;
-        const baseY = GROUND_Y - boxSize / 2;       // 695 — bottom row center sits on ground
-        const stackTops = baseY - 3 * boxSize + boxSize / 2; // 570 — top edge of 3-high stack
+        switch (this.level)
+        {
+            case 1: this.buildLevel1(); break;
+            case 2: this.buildLevel2(); break;
+            case 3: this.buildLevel3(); break;
+            case 4: this.buildLevel4(); break;
+            case 5: this.buildLevel5(); break;
+        }
+    }
+
+    spawnBeam (x: number, y: number, width: number, height = 20)
+    {
+        const beam = this.matter.add.image(x, y, 'baguette-h', undefined, {
+            friction: 0.3, density: 0.0012
+        });
+        beam.setDisplaySize(width, height);
+        beam.setData('isBox', true);
+        beam.setData('alive', true);
+        beam.setData('vulnerable', false);
+        this.time.delayedCall(SPAWN_IMMUNITY_MS, () => {
+            if (beam.active) beam.setData('vulnerable', true);
+        });
+    }
+
+    // --- Level 1: Tutorial — single tower, 1 pig on top ---
+    buildLevel1 ()
+    {
+        const box = 50;
+        const baseY = GROUND_Y - box / 2;
+
+        for (let row = 0; row < 3; row++)
+        {
+            this.spawnBox(800, baseY - row * box);
+        }
+
+        this.spawnPig(800, GROUND_Y - 3 * box - PIG_RADIUS);
+    }
+
+    // --- Level 2: Two towers + beam, 3 pigs ---
+    buildLevel2 ()
+    {
+        const box = 50;
+        const baseY = GROUND_Y - box / 2;
         const stackXs = [720, 880];
 
         for (const sx of stackXs)
         {
             for (let row = 0; row < 3; row++)
             {
-                this.spawnBox(sx, baseY - row * boxSize);
+                this.spawnBox(sx, baseY - row * box);
             }
         }
 
-        // Beam rests directly on the stack tops (no falling).
+        const stackTop = baseY - 3 * box + box / 2;
         const beamH = 20;
-        const beamY = stackTops - beamH / 2;        // 560
-        const beam = this.add.rectangle(800, beamY, 220, beamH, 0x8b5a2b)
-            .setStrokeStyle(2, 0x3a2410);
-        this.matter.add.gameObject(beam, { friction: 0.3, density: 0.0012 });
+        const beamY = stackTop - beamH / 2;
+        this.spawnBeam(800, beamY, 220);
 
-        // Pigs: two on the beam, one on the ground between the stacks.
-        const beamTop = beamY - beamH / 2;          // 550
-        const onBeamY = beamTop - PIG_RADIUS;       // 512
-        const onGroundY = GROUND_Y - PIG_RADIUS;    // 682
+        const beamTop = beamY - beamH / 2;
+        this.spawnPig(720, beamTop - PIG_RADIUS);
+        this.spawnPig(880, beamTop - PIG_RADIUS);
+        this.spawnPig(800, GROUND_Y - PIG_RADIUS);
+    }
 
-        this.spawnPig(720, onBeamY);
-        this.spawnPig(880, onBeamY);
-        this.spawnPig(800, onGroundY);
+    // --- Level 3: Three towers, 4 pigs ---
+    buildLevel3 ()
+    {
+        const box = 50;
+        const baseY = GROUND_Y - box / 2;
+        const stackXs = [650, 780, 910];
+
+        for (const sx of stackXs)
+        {
+            for (let row = 0; row < 3; row++)
+            {
+                this.spawnBox(sx, baseY - row * box);
+            }
+        }
+
+        // Beam across left pair
+        const stackTop = baseY - 3 * box + box / 2;
+        const beamH = 20;
+        const beamY = stackTop - beamH / 2;
+        this.spawnBeam(715, beamY, 190);
+        this.spawnBeam(845, beamY, 190);
+
+        const beamTop = beamY - beamH / 2;
+        this.spawnPig(715, beamTop - PIG_RADIUS);
+        this.spawnPig(845, beamTop - PIG_RADIUS);
+        this.spawnPig(715, GROUND_Y - PIG_RADIUS);
+        this.spawnPig(845, GROUND_Y - PIG_RADIUS);
+    }
+
+    // --- Level 4: Fortress — thick walls, 4 pigs inside ---
+    buildLevel4 ()
+    {
+        const box = 50;
+        const baseY = GROUND_Y - box / 2;
+
+        // Left wall (4 high)
+        for (let row = 0; row < 4; row++) this.spawnBox(680, baseY - row * box);
+        // Right wall (4 high)
+        for (let row = 0; row < 4; row++) this.spawnBox(920, baseY - row * box);
+        // Inner pillars
+        for (let row = 0; row < 2; row++) this.spawnBox(760, baseY - row * box);
+        for (let row = 0; row < 2; row++) this.spawnBox(840, baseY - row * box);
+
+        // Roof beam
+        const roofY = baseY - 4 * box + box / 2 - 10;
+        this.spawnBeam(800, roofY, 300);
+
+        // Mid beam
+        const midY = baseY - 2 * box + box / 2 - 10;
+        this.spawnBeam(800, midY, 140);
+
+        // Pigs
+        this.spawnPig(720, GROUND_Y - PIG_RADIUS);
+        this.spawnPig(800, midY - 10 - PIG_RADIUS);
+        this.spawnPig(880, GROUND_Y - PIG_RADIUS);
+        this.spawnPig(800, roofY - 10 - PIG_RADIUS);
+    }
+
+    // --- Level 5: The Bakery — double-decker, 5 pigs ---
+    buildLevel5 ()
+    {
+        const box = 50;
+        const baseY = GROUND_Y - box / 2;
+
+        // Ground-level columns (5 high on outside, 3 high inside)
+        const columns = [620, 720, 820, 920];
+        for (const cx of columns)
+        {
+            const h = (cx === 620 || cx === 920) ? 5 : 3;
+            for (let row = 0; row < h; row++) this.spawnBox(cx, baseY - row * box);
+        }
+
+        // Lower beam
+        const lowerBeamY = baseY - 3 * box + box / 2 - 10;
+        this.spawnBeam(770, lowerBeamY, 260);
+
+        // Upper towers on the lower beam
+        for (let row = 0; row < 2; row++) this.spawnBox(700, lowerBeamY - 10 - box / 2 - row * box);
+        for (let row = 0; row < 2; row++) this.spawnBox(840, lowerBeamY - 10 - box / 2 - row * box);
+
+        // Top beam
+        const upperBeamY = lowerBeamY - 10 - 2 * box - 10;
+        this.spawnBeam(770, upperBeamY, 200);
+
+        // Pigs
+        this.spawnPig(670, GROUND_Y - PIG_RADIUS);
+        this.spawnPig(870, GROUND_Y - PIG_RADIUS);
+        this.spawnPig(770, lowerBeamY - 10 - PIG_RADIUS);
+        this.spawnPig(700, upperBeamY - 10 - PIG_RADIUS);
+        this.spawnPig(840, upperBeamY - 10 - PIG_RADIUS);
     }
 
     spawnBox (x: number, y: number)
     {
-        const r = this.add.rectangle(x, y, 50, 50, 0xc8923c)
-            .setStrokeStyle(2, 0x5a3a18);
-        this.matter.add.gameObject(r, { friction: 0.3, density: 0.001 });
+        const r = this.matter.add.image(x, y, 'baguette-v', undefined, {
+            friction: 0.3, density: 0.001
+        });
+        r.setDisplaySize(50, 50);
         r.setData('isBox', true);
         r.setData('alive', true);
         r.setData('vulnerable', false);
@@ -293,9 +436,12 @@ export class Game extends Scene
 
     endRound (win: boolean)
     {
+        const isLastLevel = this.level >= TOTAL_LEVELS;
         const msg = win
-            ? `All pigs down!\nFinal score: ${this.score}\nClick to continue`
-            : 'Out of birds!\nClick to retry';
+            ? (isLastLevel
+                ? `All levels cleared!\nFinal score: ${this.score}\nClick to continue`
+                : `Level ${this.level} cleared!\nScore: ${this.score}\nClick for next level`)
+            : `Out of birds!\nClick to retry level ${this.level}`;
 
         const banner = this.add.text(512, 230, msg, {
             fontFamily: 'Arial Black', fontSize: 40, color: '#ffffff',
@@ -312,8 +458,18 @@ export class Game extends Scene
         });
 
         this.input.once('pointerdown', () => {
-            if (win) this.scene.start('GameOver', { score: this.score });
-            else this.scene.restart();
+            if (!win)
+            {
+                this.scene.start('Game', { level: this.level, score: this.score });
+            }
+            else if (isLastLevel)
+            {
+                this.scene.start('GameOver', { score: this.score });
+            }
+            else
+            {
+                this.scene.start('Game', { level: this.level + 1, score: this.score });
+            }
         });
     }
 
@@ -380,11 +536,13 @@ export class Game extends Scene
         obj.setData('alive', false);
         this.score += 25;
 
+        if (obj.setTexture) obj.setTexture('baguette-broken');
+
         this.tweens.add({
             targets: obj,
             scale: 0,
             alpha: 0,
-            duration: 200,
+            duration: 300,
             onComplete: () => obj.destroy()
         });
 
@@ -396,5 +554,6 @@ export class Game extends Scene
         this.scoreText.setText(`Score: ${this.score}`);
         this.birdsText.setText(`Birds: ${this.birdsLeft}`);
         this.pigsText.setText(`Pigs: ${this.pigsAlive}`);
+        this.levelText.setText(`Level ${this.level}/${TOTAL_LEVELS}`);
     }
 }

@@ -26,6 +26,9 @@ export class Preloader extends Scene
         this.load.image('chris-super', 'chris/super-chris.png');
         this.load.image('chris-french', 'chris/french-chris.png');
         this.load.image('chris-after-hours', 'chris/after-hours-chris.png');
+        this.load.image('baguette-h', 'assets/baguette-h.png');
+        this.load.image('baguette-v', 'assets/baguette-v.png');
+        this.load.image('baguette-broken', 'assets/baguette-broken.png');
     }
 
     create ()
