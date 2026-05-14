@@ -81,7 +81,8 @@ export class Game extends Scene
         this.powerUsed = false;
 
         // Backdrop
-        this.add.image(512, 384, 'background').setDisplaySize(1024, 768).setAlpha(0.6);
+        const bgKey = (LEVELS[this.level - 1] ?? LEVELS[0]).background ?? 'background';
+        this.add.image(512, 384, bgKey).setDisplaySize(1024, 768).setAlpha(0.6);
 
         // World bounds keep stray bodies on stage
         this.matter.world.setBounds(0, 0, 1024, 768);

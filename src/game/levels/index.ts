@@ -13,6 +13,7 @@ export const PIG_RADIUS = 38;
 export interface Level {
     roster: Power[];
     build: (scene: Game) => void;
+    background?: string;
 }
 
 export const LEVELS: Level[] = [level1, level2, level3, level4, level5];
