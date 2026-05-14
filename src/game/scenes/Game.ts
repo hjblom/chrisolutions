@@ -15,12 +15,36 @@ const REST_SPEED = 0.4;
 const REST_FRAMES_NEEDED = 24;
 const MAX_WAIT_MS = 8000;
 
+// --- Powers ---
+type Power = 'normal' | 'super' | 'split' | 'bomb';
+
+const LEVEL_ROSTERS: Power[][] = [
+    ['normal', 'normal', 'normal'],
+    ['normal', 'super', 'normal', 'bomb'],
+    ['normal', 'split', 'normal', 'bomb', 'super'],
+    ['normal', 'bomb', 'split', 'super', 'bomb'],
+    ['normal', 'split', 'super', 'bomb', 'split', 'bomb'],
+];
+
+const POWER_TINT: Record<Power, number> = {
+    normal: 0xffffff,
+    super: 0xffffff,    // texture changes instead
+    split: 0x66ddff,
+    bomb: 0xff7755,
+};
+
+const BOMB_RADIUS = 160;
+const BOMB_IMPULSE = 0.06;
+const SPLIT_FAN = 0.28;          // radians, ±
+const SPLIT_SPEED_MULT = 1.05;
+const SUPER_SPEED_MULT = 1.8;
+
 export class Game extends Scene
 {
-    bird!: Phaser.Physics.Matter.Image;
+    bird?: Phaser.Physics.Matter.Image;
     aimGraphics!: GameObjects.Graphics;
     scoreIcons: GameObjects.Image[] = [];
-    birdsText!: GameObjects.Text;
+    queueIcons: GameObjects.Image[] = [];
     pigsText!: GameObjects.Text;
     levelText!: GameObjects.Text;
     helpText!: GameObjects.Text;
@@ -32,10 +56,14 @@ export class Game extends Scene
     restFrames = 0;
     launchedAt = 0;
     score = 0;
-    birdsLeft = 5;
     pigsAlive = 0;
     level = 1;
     pigs: Phaser.Physics.Matter.Image[] = [];
+
+    birdQueue: Power[] = [];
+    currentPower: Power = 'normal';
+    powerUsed = false;
+    activeBirds: Phaser.Physics.Matter.Image[] = [];
 
     constructor ()
     {
@@ -50,15 +78,17 @@ export class Game extends Scene
 
     create ()
     {
-        this.birdsLeft = this.getBirdsForLevel();
+        this.birdQueue = [...this.getRosterForLevel()];
         this.pigsAlive = 0;
         this.pigs = [];
+        this.activeBirds = [];
         this.isDragging = false;
         this.isLaunched = false;
         this.canShoot = true;
         this.awaitingRest = false;
         this.restFrames = 0;
         this.launchedAt = 0;
+        this.powerUsed = false;
 
         // Backdrop
         this.add.image(512, 384, 'background').setDisplaySize(1024, 768).setAlpha(0.6);
@@ -81,10 +111,7 @@ export class Game extends Scene
 
         // HUD
         this.scoreIcons = [];
-        this.birdsText = this.add.text(20, 28, '', {
-            fontFamily: 'Arial', fontSize: 22, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 3
-        });
+        this.queueIcons = [];
         this.pigsText = this.add.text(20, 56, '', {
             fontFamily: 'Arial', fontSize: 22, color: '#ffffff',
             stroke: '#000000', strokeThickness: 3
@@ -93,8 +120,8 @@ export class Game extends Scene
             fontFamily: 'Arial Black', fontSize: 28, color: '#ffdd44',
             stroke: '#000000', strokeThickness: 4
         }).setOrigin(1, 0);
-        this.helpText = this.add.text(512, 30, 'Drag Chris back and release. R to restart.', {
-            fontFamily: 'Arial', fontSize: 20, color: '#ffffff',
+        this.helpText = this.add.text(512, 30, 'Drag Chris back & release. Click mid-flight to use his power!', {
+            fontFamily: 'Arial', fontSize: 18, color: '#ffffff',
             stroke: '#000000', strokeThickness: 3
         }).setOrigin(0.5, 0);
 
@@ -111,9 +138,9 @@ export class Game extends Scene
         this.input.keyboard!.on('keydown-R', () => this.scene.start('Game', { level: this.level, score: 0 }));
     }
 
-    getBirdsForLevel (): number
+    getRosterForLevel (): Power[]
     {
-        return [3, 4, 5, 5, 6][this.level - 1] ?? 5;
+        return LEVEL_ROSTERS[this.level - 1] ?? LEVEL_ROSTERS[0];
     }
 
     buildStructure ()
@@ -313,7 +340,11 @@ export class Game extends Scene
         this.isLaunched = false;
         this.isDragging = false;
         this.canShoot = true;
-        this.bird = this.matter.add.image(ANCHOR_X, ANCHOR_Y, 'chris', undefined, {
+        this.powerUsed = false;
+        this.currentPower = this.birdQueue[0] ?? 'normal';
+
+        const texture = this.currentPower === 'super' ? 'chris-super' : 'chris';
+        this.bird = this.matter.add.image(ANCHOR_X, ANCHOR_Y, texture, undefined, {
             shape: { type: 'circle', radius: 32 },
             restitution: 0.5,
             friction: 0.3,
@@ -321,11 +352,19 @@ export class Game extends Scene
         });
         this.bird.setScale(0.15);
         this.bird.setStatic(true);
+        this.bird.setTint(POWER_TINT[this.currentPower]);
+        this.activeBirds = [this.bird];
         this.drawAim();
     }
 
     onPointerDown (p: Phaser.Input.Pointer)
     {
+        // If already launched, treat this click as power activation
+        if (this.isLaunched && !this.powerUsed && this.currentPower !== 'normal')
+        {
+            this.activatePower();
+            return;
+        }
         if (!this.canShoot || this.isLaunched || !this.bird) return;
         const dx = p.x - this.bird.x;
         const dy = p.y - this.bird.y;
@@ -368,17 +407,177 @@ export class Game extends Scene
 
     launch (dx: number, dy: number)
     {
+        if (!this.bird) return;
         this.canShoot = false;
         this.isLaunched = true;
         this.bird.setStatic(false);
         this.bird.setVelocity(dx * LAUNCH_POWER, dy * LAUNCH_POWER);
         this.aimGraphics.clear();
-        this.birdsLeft -= 1;
+        this.birdQueue.shift();
         this.updateHud();
 
         this.awaitingRest = true;
         this.restFrames = 0;
         this.launchedAt = this.time.now;
+    }
+
+    // --- POWER ACTIVATION ---
+
+    activatePower ()
+    {
+        if (!this.bird || !this.bird.active) return;
+        this.powerUsed = true;
+        switch (this.currentPower)
+        {
+            case 'super': this.doSuperDive(); break;
+            case 'split': this.doSplit(); break;
+            case 'bomb':  this.doBomb();  break;
+        }
+    }
+
+    doSuperDive ()
+    {
+        const b = this.bird!;
+        const body = b.body as MatterJS.BodyType;
+        b.setTexture('chris-super');
+        b.setTint(0xffee66);
+        b.setScale(0.18);
+        b.setVelocity(body.velocity.x * SUPER_SPEED_MULT, body.velocity.y * SUPER_SPEED_MULT);
+
+        // Yellow trail particles
+        const emitter = this.add.particles(0, 0, 'sparkle', {
+            follow: b,
+            speed: 30,
+            scale: { start: 1.5, end: 0 },
+            tint: [0xffee66, 0xffaa00],
+            alpha: { start: 1, end: 0 },
+            lifespan: 380,
+            frequency: 18,
+            quantity: 2,
+        });
+        // Stop emitting once bird is gone
+        this.time.delayedCall(1500, () => emitter.stop());
+        this.time.delayedCall(2200, () => emitter.destroy());
+    }
+
+    doSplit ()
+    {
+        const b = this.bird!;
+        const body = b.body as MatterJS.BodyType;
+        const vx = body.velocity.x;
+        const vy = body.velocity.y;
+        const x = b.x;
+        const y = b.y;
+        const speed = Math.hypot(vx, vy) * SPLIT_SPEED_MULT;
+        const angle = Math.atan2(vy, vx);
+
+        // Puff at split point
+        this.add.particles(x, y, 'sparkle', {
+            speed: { min: 60, max: 160 },
+            scale: { start: 2, end: 0 },
+            tint: [0x66ddff, 0xffffff],
+            lifespan: 350,
+            quantity: 16,
+            emitting: false,
+        }).explode(16);
+
+        // Destroy original, spawn three fanned clones
+        this.activeBirds = this.activeBirds.filter(x => x !== b);
+        b.destroy();
+        this.bird = undefined;
+
+        const offsets = [-SPLIT_FAN, 0, SPLIT_FAN];
+        for (const off of offsets)
+        {
+            const a = angle + off;
+            const sub = this.matter.add.image(x, y, 'chris', undefined, {
+                shape: { type: 'circle', radius: 22 },
+                restitution: 0.5, friction: 0.3, density: 0.006,
+            });
+            sub.setScale(0.11);
+            sub.setTint(0x66ddff);
+            sub.setVelocity(Math.cos(a) * speed, Math.sin(a) * speed);
+            this.activeBirds.push(sub);
+        }
+    }
+
+    doBomb ()
+    {
+        const b = this.bird!;
+        const x = b.x;
+        const y = b.y;
+
+        // Flash ring
+        const flash = this.add.circle(x, y, 20, 0xffeecc, 0.9).setDepth(200);
+        this.tweens.add({
+            targets: flash,
+            scale: BOMB_RADIUS / 20,
+            alpha: 0,
+            duration: 380,
+            ease: 'Cubic.Out',
+            onComplete: () => flash.destroy(),
+        });
+
+        // Particles
+        this.add.particles(x, y, 'sparkle', {
+            speed: { min: 100, max: 320 },
+            scale: { start: 2.5, end: 0 },
+            tint: [0xff7733, 0xffcc44, 0xffffff],
+            lifespan: 500,
+            quantity: 30,
+            emitting: false,
+        }).explode(30);
+
+        this.cameras.main.shake(200, 0.012);
+
+        // Apply radial impulse + kill anything in radius
+        const bodies = (this.matter.world as any).localWorld.bodies as MatterJS.BodyType[];
+        for (const body of bodies)
+        {
+            if (body.isStatic) continue;
+            const obj = (body as any).gameObject;
+            if (!obj || obj === b) continue;
+            const ddx = body.position.x - x;
+            const ddy = body.position.y - y;
+            const dist = Math.hypot(ddx, ddy);
+            if (dist > BOMB_RADIUS) continue;
+            const falloff = 1 - dist / BOMB_RADIUS;
+            const nx = ddx / (dist || 1);
+            const ny = ddy / (dist || 1);
+            const mag = BOMB_IMPULSE * falloff;
+            this.matter.body.applyForce(body, body.position, { x: nx * mag, y: ny * mag - 0.02 * falloff });
+            this.forceKill(obj);
+        }
+
+        // Destroy bird
+        this.activeBirds = this.activeBirds.filter(x => x !== b);
+        b.destroy();
+        this.bird = undefined;
+    }
+
+    // Bomb-equivalent: ignore vulnerability + speed thresholds for in-radius hits
+    forceKill (obj: any)
+    {
+        if (!obj || typeof obj.getData !== 'function') return;
+        if (!obj.getData('alive')) return;
+        if (obj.getData('isPig'))
+        {
+            obj.setData('alive', false);
+            this.pigsAlive -= 1;
+            this.score += 100;
+            const idx = this.pigs.indexOf(obj);
+            if (idx >= 0) this.pigs.splice(idx, 1);
+            this.tweens.add({ targets: obj, scale: 0, alpha: 0, duration: 250, onComplete: () => obj.destroy() });
+            this.updateHud();
+        }
+        else if (obj.getData('isBox'))
+        {
+            obj.setData('alive', false);
+            this.score += 25;
+            if (obj.setTexture) obj.setTexture('baguette-broken');
+            this.tweens.add({ targets: obj, scale: 0, alpha: 0, duration: 300, onComplete: () => obj.destroy() });
+            this.updateHud();
+        }
     }
 
     update ()
@@ -418,18 +617,26 @@ export class Game extends Scene
 
     afterLaunch ()
     {
-        if (this.bird) this.bird.destroy();
+        // Clean up any surviving active birds (split clones, super dive, the og)
+        for (const ab of this.activeBirds)
+        {
+            if (ab && ab.active) ab.destroy();
+        }
+        this.activeBirds = [];
+        this.bird = undefined;
+
         if (this.pigsAlive === 0)
         {
             this.endRound(true);
             return;
         }
-        if (this.birdsLeft <= 0)
+        if (this.birdQueue.length === 0)
         {
             this.endRound(false);
             return;
         }
         this.spawnBird();
+        this.updateHud();
     }
 
     endRound (win: boolean)
@@ -550,7 +757,7 @@ export class Game extends Scene
 
     updateHud ()
     {
-        // Show score as chocolatine icons (1 per 100 points), right-aligned above level text
+        // Score as chocolatine icons (1 per 100 points), top-right
         const count = Math.floor(this.score / 100);
         while (this.scoreIcons.length < count)
         {
@@ -561,7 +768,19 @@ export class Game extends Scene
             icon.setScale(0);
             this.tweens.add({ targets: icon, scale: 0.08, duration: 300, ease: 'Back.Out' });
         }
-        this.birdsText.setText(`Birds: ${this.birdsLeft}`);
+
+        // Bird queue: icon row top-left (current bird is on the slingshot already, so show next ones)
+        for (const ic of this.queueIcons) ic.destroy();
+        this.queueIcons = [];
+        const upcoming = this.birdQueue.slice(1); // [0] is the bird currently on the slingshot
+        upcoming.forEach((power, i) => {
+            const tex = power === 'super' ? 'chris-super' : 'chris';
+            const ic = this.add.image(28 + i * 38, 32, tex)
+                .setScale(0.06).setOrigin(0.5).setDepth(100)
+                .setTint(POWER_TINT[power]);
+            this.queueIcons.push(ic);
+        });
+
         this.pigsText.setText(`Pigs: ${this.pigsAlive}`);
         this.levelText.setText(`Level ${this.level}/${TOTAL_LEVELS}`);
     }
