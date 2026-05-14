@@ -30,9 +30,17 @@ export class GameOver extends Scene
             stroke: '#000000', strokeThickness: 10
         }).setOrigin(0.5);
 
-        this.add.text(512, 560, `Final score: ${this.score}`, {
-            fontFamily: 'Arial', fontSize: 36, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 6
+        const chocs = Math.floor(this.score / 100);
+        const iconSpacing = 44;
+        const totalWidth = chocs * iconSpacing;
+        const startX = 512 - totalWidth / 2 + iconSpacing / 2;
+        for (let i = 0; i < chocs; i++)
+        {
+            this.add.image(startX + i * iconSpacing, 560, 'chocolatine').setScale(0.1);
+        }
+        this.add.text(512, 600, `${chocs} chocolatine${chocs !== 1 ? 's' : ''} earned!`, {
+            fontFamily: 'Arial', fontSize: 30, color: '#ffffff',
+            stroke: '#000000', strokeThickness: 5
         }).setOrigin(0.5);
 
         const prompt = this.add.text(512, 680, 'click to play again', {

@@ -19,7 +19,7 @@ export class Game extends Scene
 {
     bird!: Phaser.Physics.Matter.Image;
     aimGraphics!: GameObjects.Graphics;
-    scoreText!: GameObjects.Text;
+    scoreIcons: GameObjects.Image[] = [];
     birdsText!: GameObjects.Text;
     pigsText!: GameObjects.Text;
     levelText!: GameObjects.Text;
@@ -80,15 +80,12 @@ export class Game extends Scene
         this.buildStructure();
 
         // HUD
-        this.scoreText = this.add.text(20, 14, '', {
-            fontFamily: 'Arial Black', fontSize: 28, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 4
-        });
-        this.birdsText = this.add.text(20, 50, '', {
+        this.scoreIcons = [];
+        this.birdsText = this.add.text(20, 28, '', {
             fontFamily: 'Arial', fontSize: 22, color: '#ffffff',
             stroke: '#000000', strokeThickness: 3
         });
-        this.pigsText = this.add.text(20, 78, '', {
+        this.pigsText = this.add.text(20, 56, '', {
             fontFamily: 'Arial', fontSize: 22, color: '#ffffff',
             stroke: '#000000', strokeThickness: 3
         });
@@ -133,7 +130,7 @@ export class Game extends Scene
 
     spawnBeam (x: number, y: number, width: number, height = 20)
     {
-        const beam = this.matter.add.image(x, y, 'baguette-h', undefined, {
+        const beam = this.matter.add.image(x, y, 'baguette', undefined, {
             friction: 0.3, density: 0.0012
         });
         beam.setDisplaySize(width, height);
@@ -279,10 +276,11 @@ export class Game extends Scene
 
     spawnBox (x: number, y: number)
     {
-        const r = this.matter.add.image(x, y, 'baguette-v', undefined, {
+        const r = this.matter.add.image(x, y, 'baguette', undefined, {
             friction: 0.3, density: 0.001
         });
         r.setDisplaySize(50, 50);
+        r.setRotation(Math.PI / 2);
         r.setData('isBox', true);
         r.setData('alive', true);
         r.setData('vulnerable', false);
@@ -437,10 +435,11 @@ export class Game extends Scene
     endRound (win: boolean)
     {
         const isLastLevel = this.level >= TOTAL_LEVELS;
+        const chocs = Math.floor(this.score / 100);
         const msg = win
             ? (isLastLevel
-                ? `All levels cleared!\nFinal score: ${this.score}\nClick to continue`
-                : `Level ${this.level} cleared!\nScore: ${this.score}\nClick for next level`)
+                ? `All levels cleared!\n${chocs} chocolatines earned!\nClick to continue`
+                : `Level ${this.level} cleared!\n${chocs} chocolatines!\nClick for next level`)
             : `Out of birds!\nClick to retry level ${this.level}`;
 
         const banner = this.add.text(512, 230, msg, {
@@ -551,7 +550,17 @@ export class Game extends Scene
 
     updateHud ()
     {
-        this.scoreText.setText(`Score: ${this.score}`);
+        // Show score as chocolatine icons (1 per 100 points), right-aligned above level text
+        const count = Math.floor(this.score / 100);
+        while (this.scoreIcons.length < count)
+        {
+            const i = this.scoreIcons.length;
+            const icon = this.add.image(1000 - i * 36, 52, 'chocolatine')
+                .setScale(0.08).setOrigin(1, 0).setDepth(100);
+            this.scoreIcons.push(icon);
+            icon.setScale(0);
+            this.tweens.add({ targets: icon, scale: 0.08, duration: 300, ease: 'Back.Out' });
+        }
         this.birdsText.setText(`Birds: ${this.birdsLeft}`);
         this.pigsText.setText(`Pigs: ${this.pigsAlive}`);
         this.levelText.setText(`Level ${this.level}/${TOTAL_LEVELS}`);
