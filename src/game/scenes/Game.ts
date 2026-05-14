@@ -340,7 +340,7 @@ export class Game extends Scene
         this.powerUsed = false;
         this.currentPower = this.birdQueue[0] ?? 'normal';
 
-        const texture = this.currentPower === 'super' ? 'chris-super' : 'chris';
+        const texture = this.currentPower === 'super' ? 'chris-super' : 'chris-mario';
         this.bird = this.matter.add.image(ANCHOR_X, ANCHOR_Y, texture, undefined, {
             shape: { type: 'circle', radius: 32 },
             restitution: 0.5,
@@ -489,7 +489,7 @@ export class Game extends Scene
         for (const off of offsets)
         {
             const a = angle + off;
-            const sub = this.matter.add.image(x, y, 'chris', undefined, {
+            const sub = this.matter.add.image(x, y, 'chris-mario', undefined, {
                 shape: { type: 'circle', radius: 22 },
                 restitution: 0.5, friction: 0.3, density: 0.006,
             });
@@ -775,10 +775,16 @@ export class Game extends Scene
         this.queueIcons = [];
         const upcoming = this.birdQueue.slice(1);
         upcoming.forEach((power, i) => {
+<<<<<<< Updated upstream
             const tex = power === 'super' ? 'chris-super' : 'chris';
             const s = power === 'super' ? 0.23 : 0.058;
             const ic = this.add.image(24 + i * 48, 755, tex)
                 .setScale(s).setOrigin(0.5, 1).setDepth(100)
+=======
+            const tex = power === 'super' ? 'chris-super' : 'chris-mario';
+            const ic = this.add.image(28 + i * 38, 32, tex)
+                .setScale(0.06).setOrigin(0.5).setDepth(100)
+>>>>>>> Stashed changes
                 .setTint(POWER_TINT[power]);
             this.queueIcons.push(ic);
         });

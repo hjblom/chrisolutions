@@ -5,6 +5,7 @@ export class MainMenu extends Scene
     background: GameObjects.Image;
     chris: GameObjects.Image;
     title: GameObjects.Text;
+    subtitle: GameObjects.Text;
     prompt: GameObjects.Text;
 
     constructor ()
@@ -27,7 +28,7 @@ export class MainMenu extends Scene
             blendMode: 'ADD'
         });
 
-        this.chris = this.add.image(512, 400, 'chris').setScale(0.7);
+        this.chris = this.add.image(512, 430, 'chris-mario').setScale(0.45);
         this.tweens.add({
             targets: this.chris,
             y: this.chris.y - 10,
@@ -67,6 +68,11 @@ export class MainMenu extends Scene
                 });
             }
         });
+
+        this.subtitle = this.add.text(512, 230, 'Select your Chris', {
+            fontFamily: 'Arial Black', fontSize: 36, color: '#ffdd44',
+            stroke: '#000000', strokeThickness: 6
+        }).setOrigin(0.5);
 
         this.prompt = this.add.text(512, 680, 'click anywhere to start', {
             fontFamily: 'Arial', fontSize: 26, color: '#ffffff',
