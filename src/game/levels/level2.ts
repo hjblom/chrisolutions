@@ -2,7 +2,7 @@ import { GROUND_Y, PIG_RADIUS, type Level } from './index';
 
 // Level 2: Two towers + beam, 3 pigs
 export const level2: Level = {
-    roster: ['normal', 'super', 'normal', 'bomb'],
+    roster: ['normal', 'egg', 'normal', 'bomb'],
     background: 'bg-boris',
     build: (scene) => {
         const box = 50;

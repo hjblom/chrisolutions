@@ -14,11 +14,13 @@ const REST_SPEED = 0.4;
 const REST_FRAMES_NEEDED = 24;
 const MAX_WAIT_MS = 8000;
 
+
 const POWER_TINT: Record<Power, number> = {
     normal: 0xffffff,
     super: 0xffffff,    // texture changes instead
     split: 0x66ddff,
     bomb: 0xff7755,
+    egg: 0xddccaa,
 };
 
 const BOMB_RADIUS = 160;
@@ -26,6 +28,8 @@ const BOMB_IMPULSE = 0.06;
 const SPLIT_FAN = 0.28;          // radians, ±
 const SPLIT_SPEED_MULT = 1.05;
 const SUPER_SPEED_MULT = 1.8;
+const EGG_DROP_SPEED = 12;
+const EGG_DENSITY = 0.015;
 
 export class Game extends Scene
 {
@@ -84,7 +88,7 @@ export class Game extends Scene
         // Backdrop
         const levelDef = LEVELS[this.level - 1] ?? LEVELS[0];
         const bgKey = levelDef.background ?? 'background';
-        this.add.image(512, 384, bgKey).setDisplaySize(1024, 768).setAlpha(0.6);
+        this.add.image(512, 384, bgKey).setDisplaySize(1024, 768).setAlpha(0.8);
 
         // Music
         if (levelDef.music && this.cache.audio.exists(levelDef.music))
@@ -296,6 +300,7 @@ export class Game extends Scene
             case 'super': this.doSuperDive(); break;
             case 'split': this.doSplit(); break;
             case 'bomb':  this.doBomb();  break;
+            case 'egg':   this.doEggDrop(); break;
         }
     }
 
@@ -417,6 +422,35 @@ export class Game extends Scene
         this.activeBirds = this.activeBirds.filter(x => x !== b);
         b.destroy();
         this.bird = undefined;
+    }
+
+    doEggDrop ()
+    {
+        const b = this.bird!;
+        const x = b.x;
+        const y = b.y;
+
+        // Bird gets a speed boost upward after dropping
+        const body = b.body as MatterJS.BodyType;
+        b.setVelocity(body.velocity.x, body.velocity.y - 4);
+
+        // Drop Boris as a heavy projectile straight down
+        const egg = this.matter.add.image(x, y + 10, 'boris', undefined, {
+            shape: { type: 'circle', radius: 30 },
+            restitution: 0.1,
+            friction: 0.5,
+            density: EGG_DENSITY
+        });
+        egg.setScale(0.35);
+        egg.setVelocity(0, EGG_DROP_SPEED);
+        (egg.body as any).inertia = Infinity;
+        (egg.body as any).inverseInertia = 0;
+        this.activeBirds.push(egg);
+
+        // Destroy egg after a delay
+        this.time.delayedCall(3000, () => {
+            if (egg.active) egg.destroy();
+        });
     }
 
     // Bomb-equivalent: ignore vulnerability + speed thresholds for in-radius hits
