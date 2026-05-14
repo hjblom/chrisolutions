@@ -9,7 +9,7 @@ const TOTAL_LEVELS = 5;
 const KILL_SPEED = 3.0;
 const BOX_BREAK_SPEED = 5.0;
 const SPAWN_IMMUNITY_MS = 1200;
-const PIG_SCALE = 0.18;
+const PIG_SCALE = 0.25;
 const PIG_RADIUS = 38;
 const REST_SPEED = 0.4;
 const REST_FRAMES_NEEDED = 24;
@@ -45,7 +45,7 @@ export class Game extends Scene
     aimGraphics!: GameObjects.Graphics;
     scoreIcons: GameObjects.Image[] = [];
     queueIcons: GameObjects.Image[] = [];
-    pigsText!: GameObjects.Text;
+    pigIcons: GameObjects.Image[] = [];
     levelText!: GameObjects.Text;
     helpText!: GameObjects.Text;
 
@@ -112,10 +112,7 @@ export class Game extends Scene
         // HUD
         this.scoreIcons = [];
         this.queueIcons = [];
-        this.pigsText = this.add.text(20, 56, '', {
-            fontFamily: 'Arial', fontSize: 22, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 3
-        });
+        this.pigIcons = [];
         this.levelText = this.add.text(1004, 14, '', {
             fontFamily: 'Arial Black', fontSize: 28, color: '#ffdd44',
             stroke: '#000000', strokeThickness: 4
@@ -350,7 +347,9 @@ export class Game extends Scene
             friction: 0.3,
             density: 0.008
         });
-        this.bird.setScale(0.15);
+        (this.bird.body as any).inertia = 800;
+        (this.bird.body as any).inverseInertia = 1 / 800;
+        this.bird.setScale(0.11);
         this.bird.setStatic(true);
         this.bird.setTint(POWER_TINT[this.currentPower]);
         this.activeBirds = [this.bird];
@@ -441,7 +440,7 @@ export class Game extends Scene
         const body = b.body as MatterJS.BodyType;
         b.setTexture('chris-super');
         b.setTint(0xffee66);
-        b.setScale(0.18);
+        b.setScale(0.45);
         b.setVelocity(body.velocity.x * SUPER_SPEED_MULT, body.velocity.y * SUPER_SPEED_MULT);
 
         // Yellow trail particles
@@ -758,30 +757,42 @@ export class Game extends Scene
     updateHud ()
     {
         // Score as chocolatine icons (1 per 100 points), top-right
+        const chocScale = 0.08;
         const count = Math.floor(this.score / 100);
         while (this.scoreIcons.length < count)
         {
             const i = this.scoreIcons.length;
-            const icon = this.add.image(1000 - i * 36, 52, 'chocolatine')
-                .setScale(0.08).setOrigin(1, 0).setDepth(100);
+            const icon = this.add.image(1000 - i * 50, 52, 'chocolatine')
+                .setScale(chocScale).setOrigin(1, 0).setDepth(100);
             this.scoreIcons.push(icon);
             icon.setScale(0);
-            this.tweens.add({ targets: icon, scale: 0.08, duration: 300, ease: 'Back.Out' });
+            this.tweens.add({ targets: icon, scale: chocScale, duration: 300, ease: 'Back.Out' });
         }
 
-        // Bird queue: icon row top-left (current bird is on the slingshot already, so show next ones)
+        // Bird queue: bottom-left icons
+        // chris (734x517) → 30/517 ≈ 0.058, chris-super (128x128) → 30/128 ≈ 0.23
         for (const ic of this.queueIcons) ic.destroy();
         this.queueIcons = [];
-        const upcoming = this.birdQueue.slice(1); // [0] is the bird currently on the slingshot
+        const upcoming = this.birdQueue.slice(1);
         upcoming.forEach((power, i) => {
             const tex = power === 'super' ? 'chris-super' : 'chris';
-            const ic = this.add.image(28 + i * 38, 32, tex)
-                .setScale(0.06).setOrigin(0.5).setDepth(100)
+            const s = power === 'super' ? 0.23 : 0.058;
+            const ic = this.add.image(24 + i * 48, 755, tex)
+                .setScale(s).setOrigin(0.5, 1).setDepth(100)
                 .setTint(POWER_TINT[power]);
             this.queueIcons.push(ic);
         });
 
-        this.pigsText.setText(`Pigs: ${this.pigsAlive}`);
+        // Pig icons: bottom-right (128x128 → 30/128 ≈ 0.23)
+        for (const ic of this.pigIcons) ic.destroy();
+        this.pigIcons = [];
+        for (let i = 0; i < this.pigsAlive; i++)
+        {
+            const ic = this.add.image(1000 - i * 40, 755, 'chris-french')
+                .setScale(0.23).setOrigin(0.5, 1).setDepth(100);
+            this.pigIcons.push(ic);
+        }
+
         this.levelText.setText(`Level ${this.level}/${TOTAL_LEVELS}`);
     }
 }
