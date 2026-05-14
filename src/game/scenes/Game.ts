@@ -1,30 +1,18 @@
 import { Scene, GameObjects } from 'phaser';
+import { LEVELS, GROUND_Y, PIG_RADIUS, type Power } from '../levels';
 
 const ANCHOR_X = 200;
 const ANCHOR_Y = 560;
 const MAX_PULL = 190;
 const LAUNCH_POWER = 0.32;
-const GROUND_Y = 720;
-const TOTAL_LEVELS = 5;
+const TOTAL_LEVELS = LEVELS.length;
 const KILL_SPEED = 3.0;
 const BOX_BREAK_SPEED = 5.0;
 const SPAWN_IMMUNITY_MS = 1200;
 const PIG_SCALE = 0.25;
-const PIG_RADIUS = 38;
 const REST_SPEED = 0.4;
 const REST_FRAMES_NEEDED = 24;
 const MAX_WAIT_MS = 8000;
-
-// --- Powers ---
-type Power = 'normal' | 'super' | 'split' | 'bomb';
-
-const LEVEL_ROSTERS: Power[][] = [
-    ['normal', 'normal', 'normal'],
-    ['normal', 'super', 'normal', 'bomb'],
-    ['normal', 'split', 'normal', 'bomb', 'super'],
-    ['normal', 'bomb', 'split', 'super', 'bomb'],
-    ['normal', 'split', 'super', 'bomb', 'split', 'bomb'],
-];
 
 const POWER_TINT: Record<Power, number> = {
     normal: 0xffffff,
@@ -137,19 +125,13 @@ export class Game extends Scene
 
     getRosterForLevel (): Power[]
     {
-        return LEVEL_ROSTERS[this.level - 1] ?? LEVEL_ROSTERS[0];
+        return (LEVELS[this.level - 1] ?? LEVELS[0]).roster;
     }
 
     buildStructure ()
     {
-        switch (this.level)
-        {
-            case 1: this.buildLevel1(); break;
-            case 2: this.buildLevel2(); break;
-            case 3: this.buildLevel3(); break;
-            case 4: this.buildLevel4(); break;
-            case 5: this.buildLevel5(); break;
-        }
+        const level = LEVELS[this.level - 1] ?? LEVELS[0];
+        level.build(this);
     }
 
     spawnBeam (x: number, y: number, width: number, height = 20)
@@ -164,138 +146,6 @@ export class Game extends Scene
         this.time.delayedCall(SPAWN_IMMUNITY_MS, () => {
             if (beam.active) beam.setData('vulnerable', true);
         });
-    }
-
-    // --- Level 1: Tutorial — single tower, 1 pig on top ---
-    buildLevel1 ()
-    {
-        const box = 50;
-        const baseY = GROUND_Y - box / 2;
-
-        for (let row = 0; row < 3; row++)
-        {
-            this.spawnBox(800, baseY - row * box);
-        }
-
-        this.spawnPig(800, GROUND_Y - 3 * box - PIG_RADIUS);
-    }
-
-    // --- Level 2: Two towers + beam, 3 pigs ---
-    buildLevel2 ()
-    {
-        const box = 50;
-        const baseY = GROUND_Y - box / 2;
-        const stackXs = [720, 880];
-
-        for (const sx of stackXs)
-        {
-            for (let row = 0; row < 3; row++)
-            {
-                this.spawnBox(sx, baseY - row * box);
-            }
-        }
-
-        const stackTop = baseY - 3 * box + box / 2;
-        const beamH = 20;
-        const beamY = stackTop - beamH / 2;
-        this.spawnBeam(800, beamY, 220);
-
-        const beamTop = beamY - beamH / 2;
-        this.spawnPig(720, beamTop - PIG_RADIUS);
-        this.spawnPig(880, beamTop - PIG_RADIUS);
-        this.spawnPig(800, GROUND_Y - PIG_RADIUS);
-    }
-
-    // --- Level 3: Three towers, 4 pigs ---
-    buildLevel3 ()
-    {
-        const box = 50;
-        const baseY = GROUND_Y - box / 2;
-        const stackXs = [650, 780, 910];
-
-        for (const sx of stackXs)
-        {
-            for (let row = 0; row < 3; row++)
-            {
-                this.spawnBox(sx, baseY - row * box);
-            }
-        }
-
-        // Beam across left pair
-        const stackTop = baseY - 3 * box + box / 2;
-        const beamH = 20;
-        const beamY = stackTop - beamH / 2;
-        this.spawnBeam(715, beamY, 190);
-        this.spawnBeam(845, beamY, 190);
-
-        const beamTop = beamY - beamH / 2;
-        this.spawnPig(715, beamTop - PIG_RADIUS);
-        this.spawnPig(845, beamTop - PIG_RADIUS);
-        this.spawnPig(715, GROUND_Y - PIG_RADIUS);
-        this.spawnPig(845, GROUND_Y - PIG_RADIUS);
-    }
-
-    // --- Level 4: Fortress — thick walls, 4 pigs inside ---
-    buildLevel4 ()
-    {
-        const box = 50;
-        const baseY = GROUND_Y - box / 2;
-
-        // Left wall (4 high)
-        for (let row = 0; row < 4; row++) this.spawnBox(680, baseY - row * box);
-        // Right wall (4 high)
-        for (let row = 0; row < 4; row++) this.spawnBox(920, baseY - row * box);
-        // Inner pillars
-        for (let row = 0; row < 2; row++) this.spawnBox(760, baseY - row * box);
-        for (let row = 0; row < 2; row++) this.spawnBox(840, baseY - row * box);
-
-        // Roof beam
-        const roofY = baseY - 4 * box + box / 2 - 10;
-        this.spawnBeam(800, roofY, 300);
-
-        // Mid beam
-        const midY = baseY - 2 * box + box / 2 - 10;
-        this.spawnBeam(800, midY, 140);
-
-        // Pigs
-        this.spawnPig(720, GROUND_Y - PIG_RADIUS);
-        this.spawnPig(800, midY - 10 - PIG_RADIUS);
-        this.spawnPig(880, GROUND_Y - PIG_RADIUS);
-        this.spawnPig(800, roofY - 10 - PIG_RADIUS);
-    }
-
-    // --- Level 5: The Bakery — double-decker, 5 pigs ---
-    buildLevel5 ()
-    {
-        const box = 50;
-        const baseY = GROUND_Y - box / 2;
-
-        // Ground-level columns (5 high on outside, 3 high inside)
-        const columns = [620, 720, 820, 920];
-        for (const cx of columns)
-        {
-            const h = (cx === 620 || cx === 920) ? 5 : 3;
-            for (let row = 0; row < h; row++) this.spawnBox(cx, baseY - row * box);
-        }
-
-        // Lower beam
-        const lowerBeamY = baseY - 3 * box + box / 2 - 10;
-        this.spawnBeam(770, lowerBeamY, 260);
-
-        // Upper towers on the lower beam
-        for (let row = 0; row < 2; row++) this.spawnBox(700, lowerBeamY - 10 - box / 2 - row * box);
-        for (let row = 0; row < 2; row++) this.spawnBox(840, lowerBeamY - 10 - box / 2 - row * box);
-
-        // Top beam
-        const upperBeamY = lowerBeamY - 10 - 2 * box - 10;
-        this.spawnBeam(770, upperBeamY, 200);
-
-        // Pigs
-        this.spawnPig(670, GROUND_Y - PIG_RADIUS);
-        this.spawnPig(870, GROUND_Y - PIG_RADIUS);
-        this.spawnPig(770, lowerBeamY - 10 - PIG_RADIUS);
-        this.spawnPig(700, upperBeamY - 10 - PIG_RADIUS);
-        this.spawnPig(840, upperBeamY - 10 - PIG_RADIUS);
     }
 
     spawnBox (x: number, y: number)
