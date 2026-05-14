@@ -9,7 +9,7 @@ export class Preloader extends Scene
 
     init ()
     {
-        this.add.image(512, 384, 'background');
+        this.add.image(512, 384, 'background').setDisplaySize(1024, 768);
 
         this.add.rectangle(512, 384, 468, 32).setStrokeStyle(1, 0xffffff);
 

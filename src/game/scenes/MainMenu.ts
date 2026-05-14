@@ -14,7 +14,7 @@ export class MainMenu extends Scene
 
     create ()
     {
-        this.background = this.add.image(512, 384, 'background');
+        this.background = this.add.image(512, 384, 'background').setDisplaySize(1024, 768);
 
         this.add.particles(512, 420, 'sparkle', {
             speedY: { min: -40, max: -10 },
@@ -45,7 +45,7 @@ export class MainMenu extends Scene
             repeat: -1
         });
 
-        this.title = this.add.text(512, -100, 'Chrisolutions', {
+        this.title = this.add.text(512, -100, 'Angry Francais', {
             fontFamily: 'Arial Black', fontSize: 72, color: '#ffffff',
             stroke: '#000000', strokeThickness: 10,
             align: 'center'
