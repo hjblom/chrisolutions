@@ -14,6 +14,7 @@ export interface Level {
     roster: Power[];
     build: (scene: Game) => void;
     background?: string;
+    music?: string;
 }
 
 export const LEVELS: Level[] = [level1, level2, level3, level4, level5];

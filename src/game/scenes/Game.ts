@@ -53,6 +53,7 @@ export class Game extends Scene
     powerUsed = false;
     activeBirds: Phaser.Physics.Matter.Image[] = [];
     chrisKey = 'chris-mario';
+    bgMusic?: Phaser.Sound.BaseSound;
 
     constructor ()
     {
@@ -81,8 +82,19 @@ export class Game extends Scene
         this.powerUsed = false;
 
         // Backdrop
-        const bgKey = (LEVELS[this.level - 1] ?? LEVELS[0]).background ?? 'background';
+        const levelDef = LEVELS[this.level - 1] ?? LEVELS[0];
+        const bgKey = levelDef.background ?? 'background';
         this.add.image(512, 384, bgKey).setDisplaySize(1024, 768).setAlpha(0.6);
+
+        // Music
+        if (levelDef.music && this.cache.audio.exists(levelDef.music))
+        {
+            this.bgMusic = this.sound.add(levelDef.music, { loop: true, volume: 0.4 });
+            this.bgMusic.play();
+        }
+        this.events.once('shutdown', () => {
+            if (this.bgMusic) { this.bgMusic.stop(); this.bgMusic.destroy(); this.bgMusic = undefined; }
+        });
 
         // World bounds keep stray bodies on stage
         this.matter.world.setBounds(0, 0, 1024, 768);
