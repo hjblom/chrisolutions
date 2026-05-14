@@ -3,6 +3,7 @@ import { GROUND_Y, PIG_RADIUS, type Level } from './index';
 // Level 4: Fortress — thick walls, 4 pigs inside
 export const level4: Level = {
     roster: ['normal', 'bomb', 'split', 'egg', 'bomb'],
+    music: 'bgm2',
     build: (scene) => {
         const box = 50;
         const baseY = GROUND_Y - box / 2;

@@ -1,4 +1,5 @@
 import { Scene, GameObjects } from 'phaser';
+import { playBgm } from './bgm';
 
 const CHRIS_OPTIONS = ['chris-mario', 'chris-keg'];
 const CHRIS_SCALE = 0.45;
@@ -21,6 +22,10 @@ export class MainMenu extends Scene
 
     create ()
     {
+        // Queue bgm1 — if audio is already unlocked it plays now; if locked,
+        // Phaser plays it on the user's first interaction (arrow, click, key).
+        playBgm(this, 'bgm1');
+
         this.background = this.add.image(512, 384, 'background').setDisplaySize(1024, 768);
 
         this.add.particles(512, 420, 'sparkle', {

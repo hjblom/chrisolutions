@@ -4,6 +4,7 @@ import { GROUND_Y, PIG_RADIUS, type Level } from './index';
 export const level2: Level = {
     roster: ['normal', 'egg', 'normal', 'bomb'],
     background: 'bg-boris',
+    music: 'bgm1',
     build: (scene) => {
         const box = 50;
         const baseY = GROUND_Y - box / 2;

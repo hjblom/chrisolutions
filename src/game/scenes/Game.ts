@@ -1,5 +1,6 @@
 import { Scene, GameObjects } from 'phaser';
 import { LEVELS, GROUND_Y, PIG_RADIUS, type Power } from '../levels';
+import { playBgm } from './bgm';
 
 const ANCHOR_X = 200;
 const ANCHOR_Y = 560;
@@ -57,7 +58,7 @@ export class Game extends Scene
     powerUsed = false;
     activeBirds: Phaser.Physics.Matter.Image[] = [];
     chrisKey = 'chris-mario';
-    bgMusic?: Phaser.Sound.BaseSound;
+    lastCrashAt = 0;
 
     constructor ()
     {
@@ -90,15 +91,12 @@ export class Game extends Scene
         const bgKey = levelDef.background ?? 'background';
         this.add.image(512, 384, bgKey).setDisplaySize(1024, 768).setAlpha(0.8);
 
-        // Music
+        // Music — playBgm reuses sounds across scenes, so going 1->2 (same track)
+        // doesn't restart, while 2->3 swaps to the new track.
         if (levelDef.music && this.cache.audio.exists(levelDef.music))
         {
-            this.bgMusic = this.sound.add(levelDef.music, { loop: true, volume: 0.4 });
-            this.bgMusic.play();
+            playBgm(this, levelDef.music);
         }
-        this.events.once('shutdown', () => {
-            if (this.bgMusic) { this.bgMusic.stop(); this.bgMusic.destroy(); this.bgMusic = undefined; }
-        });
 
         // World bounds keep stray bodies on stage
         this.matter.world.setBounds(0, 0, 1024, 768);
@@ -284,9 +282,25 @@ export class Game extends Scene
         this.birdQueue.shift();
         this.updateHud();
 
+        this.playSpring();
+
         this.awaitingRest = true;
         this.restFrames = 0;
         this.launchedAt = this.time.now;
+    }
+
+    playSpring ()
+    {
+        const n = 1 + Math.floor(Math.random() * 3);
+        this.sound.play(`spring${n}`, { volume: 0.7 });
+    }
+
+    playCrash ()
+    {
+        if (this.time.now - this.lastCrashAt < 60) return;
+        this.lastCrashAt = this.time.now;
+        const n = 1 + Math.floor(Math.random() * 6);
+        this.sound.play(`crash${n}`, { volume: 0.6 });
     }
 
     // --- POWER ACTIVATION ---
@@ -465,6 +479,7 @@ export class Game extends Scene
             this.score += 100;
             const idx = this.pigs.indexOf(obj);
             if (idx >= 0) this.pigs.splice(idx, 1);
+            this.playCrash();
             this.tweens.add({ targets: obj, scale: 0, alpha: 0, duration: 250, onComplete: () => obj.destroy() });
             this.updateHud();
         }
@@ -473,6 +488,7 @@ export class Game extends Scene
             obj.setData('alive', false);
             this.score += 25;
             if (obj.setTexture) obj.setTexture('baguette-broken');
+            this.playCrash();
             this.tweens.add({ targets: obj, scale: 0, alpha: 0, duration: 300, onComplete: () => obj.destroy() });
             this.updateHud();
         }
@@ -619,6 +635,8 @@ export class Game extends Scene
         const idx = this.pigs.indexOf(obj);
         if (idx >= 0) this.pigs.splice(idx, 1);
 
+        this.playCrash();
+
         this.tweens.add({
             targets: obj,
             scale: 0,
@@ -641,6 +659,8 @@ export class Game extends Scene
         this.score += 25;
 
         if (obj.setTexture) obj.setTexture('baguette-broken');
+
+        this.playCrash();
 
         this.tweens.add({
             targets: obj,

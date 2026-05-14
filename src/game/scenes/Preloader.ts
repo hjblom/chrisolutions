@@ -32,6 +32,21 @@ export class Preloader extends Scene
         this.load.image('baguette-broken', 'assets/baguette-broken.png');
         this.load.image('bg-boris', 'assets/boris.png');
         this.load.image('boris', 'boris.png');
+
+        this.load.audio('bgm1', 'music/BACKGROUND_MUSIC_1.mp3');
+        this.load.audio('bgm2', 'music/BACKGROUND_MUSIC_2.mp3');
+        this.load.audio('bgm3', 'music/BACKGROUND_MUSIC_3.mp3');
+
+        this.load.audio('spring1', 'sfx/SPRING_1.mp3');
+        this.load.audio('spring2', 'sfx/SPRING_2.mp3');
+        this.load.audio('spring3', 'sfx/SPRING_3.mp3');
+
+        this.load.audio('crash1', 'sfx/CRASH_1.mp3');
+        this.load.audio('crash2', 'sfx/CRASH_2.mp3');
+        this.load.audio('crash3', 'sfx/CRASH_3.mp3');
+        this.load.audio('crash4', 'sfx/CRASH_4.mp3');
+        this.load.audio('crash5', 'sfx/CRASH_5.mp3');
+        this.load.audio('crash6', 'sfx/CRASH_6.mp3');
     }
 
     create ()
